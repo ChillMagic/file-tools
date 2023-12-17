@@ -34,17 +34,52 @@ def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[Li
 def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = None):
     record_old_dir, record_new_dir, record_diff = analyze_dir_diffs(old_dir, new_dir, filter_list)
 
-    def print_list(record_list, prefix):
+    def get_sig_map(base_dir: Path, record_list):
+        sig_map = {}
         for (dir, file_list) in record_list:
             for file in file_list:
-                print(prefix + str(Path(dir) / file) + '\033[0m')
+                def _traverse(p):
+                    if p.is_dir():
+                        for subp in p.iterdir():
+                            _traverse(subp)
+                    elif p.is_file():
+                        sig = (p.stat().st_size, p.stat().st_mtime)
+                        assert sig not in sig_map
+                        sig_map[sig] = p.relative_to(base_dir)
+                _traverse(base_dir / dir / file)
+
+        return sig_map
+
+    def print_list(record_list, prefix, filter_set: set = None):
+        for (dir, file_list) in record_list:
+            for file in file_list:
+                path = Path(dir) / file
+                if (not filter_set) or (path not in filter_set):
+                    print(prefix + str(path) + '\033[0m')
+
+    # Analysis moved
+    old_sig_map = get_sig_map(old_dir, record_old_dir)
+    new_sig_map = get_sig_map(new_dir, record_new_dir)
+    move_record_list = []
+    old_moved = set()
+    new_moved = set()
+    for sig, path in old_sig_map.items():
+        if sig in new_sig_map:
+            old, new = path, new_sig_map[sig]
+            old_moved.add(old)
+            new_moved.add(new)
+            move_record_list.append((old, new))
 
     print('-' * 100)
     print(f"Only in `{old_dir}`:")
-    print_list(record_old_dir, '\033[31m- ')
+    print_list(record_old_dir, '\033[31m- ', old_moved)
     print('-' * 100)
     print(f"Only in `{new_dir}`:")
-    print_list(record_new_dir, '\033[32m+ ')
+    print_list(record_new_dir, '\033[32m+ ', new_moved)
     print('-' * 100)
     print(f"Modified:")
     print_list(record_diff, '\033[33m* ')
+    print('-' * 100)
+    print(f'Moved:')
+    for old, new in move_record_list:
+        print(f'\033[34mM {old} -> {new}\033[0m')
