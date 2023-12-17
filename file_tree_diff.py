@@ -31,7 +31,7 @@ def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[Li
     return record_dir1, record_dir2, record_diff
 
 
-def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = None):
+def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = None, extra_sig_map: Optional[set] = None):
     record_old_dir, record_new_dir, record_diff = analyze_dir_diffs(old_dir, new_dir, filter_list)
 
     def get_sig_map(base_dir: Path, record_list):
@@ -73,6 +73,11 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
                 new_moved.add(new_item)
 
             move_record_list.append((old, new))
+        if sig in extra_sig_map:
+            old, extra = paths, extra_sig_map[sig]
+            for old_item in old:
+                old_moved.add(old_item)
+            move_record_list.append((old, extra))
 
     print('-' * 100)
     print(f"Only in `{old_dir}`:")
