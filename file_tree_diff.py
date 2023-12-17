@@ -44,8 +44,9 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
                             _traverse(subp)
                     elif p.is_file():
                         sig = (p.stat().st_size, p.stat().st_mtime)
-                        assert sig not in sig_map
-                        sig_map[sig] = p.relative_to(base_dir)
+                        if sig not in sig_map:
+                            sig_map[sig] = []
+                        sig_map[sig].append(p.relative_to(base_dir))
                 _traverse(base_dir / dir / file)
 
         return sig_map
@@ -63,11 +64,14 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
     move_record_list = []
     old_moved = set()
     new_moved = set()
-    for sig, path in old_sig_map.items():
+    for sig, paths in old_sig_map.items():
         if sig in new_sig_map:
-            old, new = path, new_sig_map[sig]
-            old_moved.add(old)
-            new_moved.add(new)
+            old, new = paths, new_sig_map[sig]
+            for old_item in old:
+                old_moved.add(old_item)
+            for new_item in new:
+                new_moved.add(new_item)
+
             move_record_list.append((old, new))
 
     print('-' * 100)
@@ -82,4 +86,8 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
     print('-' * 100)
     print(f'Moved:')
     for old, new in move_record_list:
+        if isinstance(old, list) and len(old) == 1:
+            old = old[0]
+        if isinstance(new, list) and len(new) == 1:
+            new = new[0]
         print(f'\033[34mM {old} -> {new}\033[0m')
