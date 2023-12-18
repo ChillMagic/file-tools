@@ -47,7 +47,9 @@ class ArchiveFileReader:
     @property
     @functools.cache
     def infolist(self):
-        output = subprocess.check_output([self._7z_program(), 'l', '-ba', '-slt', self.file])
+        process = subprocess.Popen([self._7z_program(), 'l', '-ba', '-slt', self.file], stdout=subprocess.PIPE)
+        output, _ = process.communicate()
+        assert process.wait() == 0
         infos = []
         for line in output.splitlines():
             mat = re.match(rb'(\w+) = (.*)', line)
