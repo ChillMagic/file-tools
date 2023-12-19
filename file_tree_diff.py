@@ -1,7 +1,8 @@
-from . import new_filecmp as filecmp
+import filecmp
 from pathlib import Path, PurePath
 from typing import List, Optional
 from collections import OrderedDict
+from copy import deepcopy
 
 
 DumpScan = False
@@ -57,7 +58,13 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
             for file in file_list:
                 path = Path(dir) / file
                 if (not filter_set) or (path not in filter_set):
-                    print(prefix + str(path) + '\033[0m')
+                    ok = True
+                    for filter_item in filter_list:
+                        if path.is_relative_to(filter_item):
+                            ok = False
+                            break
+                    if ok:
+                        print(prefix + str(path) + '\033[0m')
 
     # Analysis moved
     old_sig_map = get_sig_map(old_dir, record_old_dir)
@@ -86,7 +93,7 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
                 move_record_map[old_item] = extra
 
     filter_old_files = set()
-    for (dir, file_list) in record_old_dir:
+    for (dir, file_list) in deepcopy(record_old_dir):
         dir_path = old_dir / dir
         for file in file_list:
             path = dir_path / file
@@ -102,21 +109,36 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
 
                 move_to_dirs = OrderedDict()
                 will_filter_old_files = set()
+                will_record_old_dir = []
+                next_files = []
                 for f in files:
                     will_filter_old_files.add(f.relative_to(old_dir))
                     current_dir_path_str = str(f.relative_to(path).parent)
                     current_dir_path_str = '' if current_dir_path_str == '.' else current_dir_path_str
-                    if f.relative_to(old_dir) not in move_record_map:
-                        continue
-                    move_to_list = move_record_map[f.relative_to(old_dir)]
-                    if len(move_to_list) == 1:
+                    move_to_list = move_record_map.get(f.relative_to(old_dir))
+                    if not move_to_list:
+                        will_record_old_dir.append((dir, [f.relative_to(old_dir / dir)]))
+                    elif len(move_to_list) == 1:
                         move_to_path_str = str(move_to_list[0].parent)
                         if move_to_path_str.endswith(current_dir_path_str):
                             move_to_dirs[PurePath(move_to_path_str[:len(move_to_path_str)-len(current_dir_path_str)])] = True
+                    else:
+                        file_movelist = OrderedDict()
+                        for move_to_item in move_to_list:
+                            move_to_path_str = str(move_to_item.parent)
+                            # print(f, move_to_path_str, current_dir_path_str)
+                            if move_to_path_str.endswith(current_dir_path_str):
+                                file_movelist[PurePath(move_to_path_str[:len(move_to_path_str)-len(current_dir_path_str)])] = True
+                        next_files.append((f, list(file_movelist.keys())))
+
                 if move_to_dirs:
                     old_moved.add(Path(dir) / file)
                     move_record_list.append(([Path(dir) / file],list(move_to_dirs.keys())))
                     filter_old_files.update(will_filter_old_files)
+                    record_old_dir.extend(will_record_old_dir)
+                    for f, move_to_list in next_files:
+                        # TODO
+                        pass
 
     print('-' * 100)
     print(f"Only in `{old_dir}`:")

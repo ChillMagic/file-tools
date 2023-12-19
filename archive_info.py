@@ -65,7 +65,10 @@ class ArchiveFileReader:
                 elif field_name == 'Attributes':
                     current_info['is_file'] = 'A' in value
                 elif field_name == 'Modified':
-                    datetime_part, nanoseconds_str = value.split('.')
+                    if '.' in value:
+                        datetime_part, nanoseconds_str = value.split('.')
+                    else:
+                        datetime_part, nanoseconds_str = value, '0'
                     nanoseconds = float('0.' + nanoseconds_str)
                     timestamp = datetime.datetime.fromisoformat(datetime_part).timestamp() + nanoseconds
                     current_info['st_mtime'] = timestamp
