@@ -20,7 +20,7 @@ def _to_bytes(item: Union[int, float, str]) -> bytes:
 
 
 def _calc_hash(data_list: List[bytes]) -> bytes:
-    return hashlib.sha256(b'\0'.join(data_list)).digest()
+    return hashlib.sha256(b'\0'.join(sorted(data_list))).digest()
 
 
 @dataclass
@@ -153,7 +153,7 @@ def gen_file_tree(path: Path) -> Optional[FileTree]:
             node = FileNode(name=p.name, sig_info=FileNode.FileSigInfo.from_file(p), parent=parent)
         elif p.is_dir():
             node = EntryNode(name=p.name, parent=parent)
-            for sub_p in p.iterdir():
+            for sub_p in sorted(list(p.iterdir())):
                 _traverse(sub_p, node)
         else:
             print('Ignore', p)
