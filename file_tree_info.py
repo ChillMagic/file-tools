@@ -1,5 +1,7 @@
+import abc
 import datetime
 import hashlib
+import itertools
 import math
 import struct
 from dataclasses import dataclass
@@ -23,10 +25,22 @@ def _calc_hash(data_list: List[bytes]) -> bytes:
     return hashlib.sha256(b'\0'.join(sorted(data_list))).digest()
 
 
-@dataclass
-class FileTreeNode(anytree.Node):
+class FileTreeNode(anytree.Node, abc.ABC):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    @property
+    @abc.abstractmethod
+    def sig(self):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def sig_name(self):
+        pass
+
+    def __lt__(self, other: Self) -> bool:
+        return self.sig_name < other.sig_name
 
 
 class FileNode(FileTreeNode):
@@ -65,7 +79,7 @@ class FileNode(FileTreeNode):
 
     @property
     def sig_name(self):
-        return self.sig, self.name
+        return self.sig, self.name.encode()
 
     def to_dict(self):
         return {
@@ -102,7 +116,7 @@ class EntryNode(FileTreeNode):
     @property
     def sig_name(self):
         if self.__sig_name is None:
-            self.__sig_name = _calc_hash([n.sig_name for n in self.children]), self.name
+            self.__sig_name = _calc_hash(itertools.chain(*[n.sig_name for n in self.children])), self.name.encode()
         return self.__sig_name
 
     def to_dict(self):
