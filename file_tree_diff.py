@@ -7,7 +7,7 @@ from copy import deepcopy
 
 DumpScan = False
 
-def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[List[str]] = None):
+def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[List[str]] = None, dircmp_init: callable = filecmp.dircmp):
     record_dir1 = []
     record_dir2 = []
     record_diff = []
@@ -29,13 +29,13 @@ def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[Li
         for sub_dcmp in dcmp.subdirs.values():
             analyze_dir_diffs_base(sub_dcmp)
 
-    dcmp = filecmp.dircmp(base_dir1, base_dir2)
+    dcmp = dircmp_init(base_dir1, base_dir2)
     analyze_dir_diffs_base(dcmp)
     return record_dir1, record_dir2, record_diff
 
 
-def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = None, extra_sig_map: Optional[dict] = None):
-    record_old_dir, record_new_dir, record_diff = analyze_dir_diffs(old_dir, new_dir, filter_list)
+def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = None, extra_sig_map: Optional[dict] = None, dircmp_init: callable = filecmp.dircmp):
+    record_old_dir, record_new_dir, record_diff = analyze_dir_diffs(old_dir, new_dir, filter_list, dircmp_init)
 
     def get_sig_map(base_dir: Path, record_list):
         sig_map = {}
