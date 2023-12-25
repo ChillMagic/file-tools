@@ -11,7 +11,8 @@ def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[Li
     record_dir1 = []
     record_dir2 = []
     record_diff = []
-    def analyze_dir_diffs_base(dir1: Path, dir2: Path):
+    def analyze_dir_diffs_base(dcmp):
+        dir1, dir2 = dcmp.left, dcmp.right
         pure_path = Path(dir1).relative_to(base_dir1)
         if DumpScan:
             print('Scaning', pure_path)  # Debug
@@ -19,7 +20,6 @@ def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[Li
         pure_path = str(pure_path)
         if filter_list and pure_path in filter_list:
             return
-        dcmp = filecmp.dircmp(dir1, dir2)
         if dcmp.left_only:
             record_dir1.append((pure_path, dcmp.left_only))
         if dcmp.right_only:
@@ -27,9 +27,10 @@ def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[Li
         if dcmp.diff_files:
             record_diff.append((pure_path, dcmp.diff_files))
         for sub_dcmp in dcmp.subdirs.values():
-            analyze_dir_diffs_base(sub_dcmp.left, sub_dcmp.right)
+            analyze_dir_diffs_base(sub_dcmp)
 
-    analyze_dir_diffs_base(base_dir1, base_dir2)
+    dcmp = filecmp.dircmp(base_dir1, base_dir2)
+    analyze_dir_diffs_base(dcmp)
     return record_dir1, record_dir2, record_diff
 
 
