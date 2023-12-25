@@ -2,6 +2,7 @@ import abc
 import datetime
 import hashlib
 import itertools
+import json
 import math
 import struct
 from dataclasses import dataclass
@@ -210,3 +211,13 @@ def gen_file_tree(path: Path) -> Optional[FileTree]:
         return FileTree(root)
     else:
         return None
+
+
+def load_file_tree(path: Path, cache_file: Path) -> FileTree:
+    if cache_file.exists():
+        file_tree = FileTree.from_dict(json.loads(cache_file.read_text()))
+    else:
+        file_tree = gen_file_tree(path)
+        cache_file.write_text(json.dumps(file_tree.to_dict()))
+    file_tree.path = path
+    return file_tree
