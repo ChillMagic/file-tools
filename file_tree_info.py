@@ -5,7 +5,7 @@ import itertools
 import math
 import struct
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Optional, Union, List, Self
 
 import anytree
@@ -41,6 +41,16 @@ class FileTreeNode(anytree.Node, abc.ABC):
 
     def __lt__(self, other: Self) -> bool:
         return self.sig_name < other.sig_name
+
+    @property
+    def relative_path(self) -> PurePath:
+        return PurePath('/'.join(map(lambda n: n.name, self.path[1:])))
+
+    @property
+    def full_path(self) -> Path:
+        base_path = self.root.file_tree.path
+        assert base_path, "FileTree's field `path` is None"
+        return base_path / self.relative_path
 
 
 class FileNode(FileTreeNode):
@@ -102,6 +112,25 @@ class EntryNode(FileTreeNode):
         super().__init__(*args, **kwargs)
         self.__sig = None
         self.__sig_name = None
+        self.file_tree = None  # Only active in root node
+
+    def __join_base(self, name: str):
+        for n in self.children:
+            if n.name == name:
+                return n
+        raise FileNotFoundError
+
+    def joinpath(self, path: Union[PurePath, str]) -> Self:
+        if isinstance(path, str):
+            return self.__join_base(path)
+        else:
+            n = self
+            for name in path.parts:
+                n = n.__join_base(name)
+            return n
+
+    def __truediv__(self, path: Union[PurePath, str]) -> Self:
+        return self.joinpath(path)
 
     @property
     def sig(self) -> bytes:
@@ -143,6 +172,9 @@ class EntryNode(FileTreeNode):
 class FileTree:
     def __init__(self, root: EntryNode):
         self.root = root
+        self.root.file_tree = self
+        # Additional field
+        self.path: Optional[Path] = None
 
     def dump(self):
         for pre, _, node in anytree.RenderTree(self.root):
