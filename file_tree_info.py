@@ -107,6 +107,12 @@ class FileNode(FileTreeNode):
         result.sig = bytes.fromhex(data['sig'])
         return result
 
+    def set_sig_map(self, sig_map: dict):
+        sig = self.sig
+        if sig not in sig_map:
+            sig_map[sig] = []
+        sig_map[sig].append(self.relative_path)
+
 
 class EntryNode(FileTreeNode):
     def __init__(self, *args, **kwargs):
@@ -169,6 +175,10 @@ class EntryNode(FileTreeNode):
                 EntryNode.from_dict(d, parent=result)
         return result
 
+    def set_sig_map(self, sig_map: dict):
+        for subn in self.children:
+            subn.set_sig_map(sig_map)
+
 
 class FileTree:
     def __init__(self, root: EntryNode):
@@ -208,7 +218,9 @@ def gen_file_tree(path: Path) -> Optional[FileTree]:
     root = _traverse(path)
     if isinstance(root, EntryNode):
         _ = root.sig  # Do sig calc
-        return FileTree(root)
+        result = FileTree(root)
+        result.path = path
+        return result
     else:
         return None
 

@@ -34,7 +34,7 @@ def analyze_dir_diffs(base_dir1: Path, base_dir2: Path, filter_list: Optional[Li
     return record_dir1, record_dir2, record_diff
 
 
-def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = None, extra_sig_map: Optional[dict] = None, dircmp_init: callable = filecmp.dircmp):
+def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = None, extra_sig_map: Optional[dict] = None, dircmp_init: callable = filecmp.dircmp, old_filetree = None, new_filetree = None):
     record_old_dir, record_new_dir, record_diff = analyze_dir_diffs(old_dir, new_dir, filter_list, dircmp_init)
 
     def get_sig_map(base_dir: Path, record_list):
@@ -54,6 +54,15 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
 
         return sig_map
 
+    def get_sig_map_with_filetree(file_tree, record_list):
+        sig_map = {}
+        for (dir, file_list) in record_list:
+            for file in file_list:
+                path = PurePath(dir) / file
+                (file_tree.root / path).set_sig_map(sig_map)
+
+        return sig_map
+
     def print_list(record_list, prefix, filter_set: set = None):
         for (dir, file_list) in record_list:
             for file in file_list:
@@ -68,8 +77,8 @@ def do_diff(old_dir: Path, new_dir: Path, filter_list: Optional[List[str]] = Non
                         print(prefix + str(path) + '\033[0m')
 
     # Analysis moved
-    old_sig_map = get_sig_map(old_dir, record_old_dir)
-    new_sig_map = get_sig_map(new_dir, record_new_dir)
+    old_sig_map = get_sig_map_with_filetree(old_filetree, record_old_dir) if old_filetree else get_sig_map(old_dir, record_old_dir)
+    new_sig_map = get_sig_map_with_filetree(new_filetree, record_new_dir) if new_filetree else get_sig_map(new_dir, record_new_dir)
     move_record_list = []
     move_record_map = {}
     old_moved = set()
